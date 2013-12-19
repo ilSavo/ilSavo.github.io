@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('ilSavogithubioApp', [
+angular.module('ilsavo2App', [
   'ngResource',
   'ngSanitize',
   'ngRoute'
@@ -10,6 +10,14 @@ angular.module('ilSavogithubioApp', [
       .when('/', {
         templateUrl: 'views/main.html',
         controller: 'MainCtrl'
+      })
+      .when('/about', {
+        templateUrl: 'views/about.html',
+        controller: 'AboutCtrl'
+      })
+      .when('/contact', {
+        templateUrl: 'views/contact.html',
+        controller: 'ContactCtrl'
       })
       .otherwise({
         redirectTo: '/'

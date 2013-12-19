@@ -9790,7 +9790,7 @@ if ( typeof module === "object" && module && typeof module.exports === "object" 
 })( window );
 
 /**
- * @license AngularJS v1.2.6-build.1994+sha.4f72433
+ * @license AngularJS v1.2.6-build.2002+sha.09f8962
  * (c) 2010-2014 Google, Inc. http://angularjs.org
  * License: MIT
  */
@@ -9860,7 +9860,7 @@ function minErr(module) {
       return match;
     });
 
-    message = message + '\nhttp://errors.angularjs.org/1.2.6-build.1994+sha.4f72433/' +
+    message = message + '\nhttp://errors.angularjs.org/1.2.6-build.2002+sha.09f8962/' +
       (module ? module + '/' : '') + code;
     for (i = 2; i < arguments.length; i++) {
       message = message + (i == 2 ? '?' : '&') + 'p' + (i-2) + '=' +
@@ -10640,7 +10640,7 @@ function shallowCopy(src, dst) {
   for(var key in src) {
     // shallowCopy is only ever called by $compile nodeLinkFn, which has control over src
     // so we don't need to worry about using our custom hasOwnProperty here
-    if (src.hasOwnProperty(key) && key.substr(0, 2) !== '$$') {
+    if (src.hasOwnProperty(key) && key.charAt(0) !== '$' && key.charAt(1) !== '$') {
       dst[key] = src[key];
     }
   }
@@ -11621,7 +11621,7 @@ function setupModuleLoader(window) {
  * - `codeName` – `{string}` – Code name of the release, such as "jiggling-armfat".
  */
 var version = {
-  full: '1.2.6-build.1994+sha.4f72433',    // all of these placeholder strings will be replaced by grunt's
+  full: '1.2.6-build.2002+sha.09f8962',    // all of these placeholder strings will be replaced by grunt's
   major: 1,    // package task
   minor: 2,
   dot: 6,
@@ -14906,14 +14906,14 @@ function $TemplateCacheProvider() {
  *   example would not point to the clone, but rather to the original template that was cloned. In
  *   this case, you can access the clone via the cloneAttachFn:
  *   <pre>
- *     var templateHTML = angular.element('<p>{{total}}</p>'),
+ *     var templateElement = angular.element('<p>{{total}}</p>'),
  *         scope = ....;
  *
- *     var clonedElement = $compile(templateHTML)(scope, function(clonedElement, scope) {
+ *     var clonedElement = $compile(templateElement)(scope, function(clonedElement, scope) {
  *       //attach the clone to DOM document at the right place
  *     });
  *
- *     //now we have reference to the cloned DOM via `clone`
+ *     //now we have reference to the cloned DOM via `clonedElement`
  *   </pre>
  *
  *
@@ -15302,7 +15302,7 @@ function $CompileProvider($provide, $$sanitizeUriProvider) {
      * @param {DOMElement=} $rootElement If the nodeList is the root of the compilation tree then
      *        the rootElement must be set the jqLite collection of the compile root. This is
      *        needed so that the jqLite collection items can be replaced with widgets.
-     * @param {number=} max directive priority
+     * @param {number=} maxPriority Max directive priority.
      * @returns {?function} A composite linking function of all of the matched directives or null.
      */
     function compileNodes(nodeList, transcludeFn, $rootElement, maxPriority, ignoreDirective,
@@ -18046,6 +18046,88 @@ function $IntervalProvider() {
       * @param {boolean=} [invokeApply=true] If set to `false` skips model dirty checking, otherwise
       *   will invoke `fn` within the {@link ng.$rootScope.Scope#methods_$apply $apply} block.
       * @returns {promise} A promise which will be notified on each iteration.
+      *
+      * @example
+      <doc:example module="time">
+        <doc:source>
+          <script>
+            function Ctrl2($scope,$interval) {
+              $scope.format = 'M/d/yy h:mm:ss a';
+              $scope.blood_1 = 100;
+              $scope.blood_2 = 120;
+
+              var stop;
+              $scope.fight = function() {
+                // Don't start a new fight if we are already fighting
+                if ( angular.isDefined(stop) ) return;
+
+                stop = $interval(function() {
+                  if ($scope.blood_1 > 0 && $scope.blood_2 > 0) {
+                      $scope.blood_1 = $scope.blood_1 - 3;
+                      $scope.blood_2 = $scope.blood_2 - 4;
+                  } else {
+                      $interval.cancel(stop);
+                  }
+                }, 100);
+              };
+
+              $scope.stopFight = function() {
+                $interval.cancel(stop);
+                stop = undefined;
+              };
+
+              $scope.resetFight = function() {
+                $scope.blood_1 = 100;
+                $scope.blood_2 = 120;
+              }
+            }
+
+            angular.module('time', [])
+              // Register the 'myCurrentTime' directive factory method.
+              // We inject $interval and dateFilter service since the factory method is DI.
+              .directive('myCurrentTime', function($interval, dateFilter) {
+                // return the directive link function. (compile function not needed)
+                return function(scope, element, attrs) {
+                  var format,  // date format
+                  stopTime; // so that we can cancel the time updates
+
+                  // used to update the UI
+                  function updateTime() {
+                    element.text(dateFilter(new Date(), format));
+                  }
+
+                  // watch the expression, and update the UI on change.
+                  scope.$watch(attrs.myCurrentTime, function(value) {
+                    format = value;
+                    updateTime();
+                  });
+
+                  stopTime = $interval(updateTime, 1000);
+
+                  // listen on DOM destroy (removal) event, and cancel the next UI update
+                  // to prevent updating time ofter the DOM element was removed.
+                  element.bind('$destroy', function() {
+                    $interval.cancel(stopTime);
+                  });
+                }
+              });
+          </script>
+
+          <div>
+            <div ng-controller="Ctrl2">
+              Date format: <input ng-model="format"> <hr/>
+              Current time is: <span my-current-time="format"></span>
+              <hr/>
+              Blood 1 : <font color='red'>{{blood_1}}</font>
+              Blood 2 : <font color='red'>{{blood_2}}</font>
+              <button type="button" data-ng-click="fight()">Fight</button>
+              <button type="button" data-ng-click="stopFight()">StopFight</button>
+              <button type="button" data-ng-click="resetFight()">resetFight</button>
+            </div>
+          </div>
+
+        </doc:source>
+      </doc:example>
       */
     function interval(fn, delay, count, invokeApply) {
       var setInterval = $window.setInterval,
@@ -23080,6 +23162,7 @@ function $SnifferProvider() {
       vendorPrefix: vendorPrefix,
       transitions : transitions,
       animations : animations,
+      android: android,
       msie : msie,
       msieDocumentMode: documentMode
     };
@@ -23117,93 +23200,6 @@ function $TimeoutProvider() {
       * @returns {Promise} Promise that will be resolved when the timeout is reached. The value this
       *   promise will be resolved with is the return value of the `fn` function.
       * 
-      * @example
-      <doc:example module="time">
-        <doc:source>
-          <script>
-            function Ctrl2($scope,$timeout) {
-              $scope.format = 'M/d/yy h:mm:ss a';
-              $scope.blood_1 = 100;
-              $scope.blood_2 = 120;
-
-              var stop;
-              $scope.fight = function() {
-                stop = $timeout(function() {
-                  if ($scope.blood_1 > 0 && $scope.blood_2 > 0) {
-                      $scope.blood_1 = $scope.blood_1 - 3;
-                      $scope.blood_2 = $scope.blood_2 - 4;
-                      $scope.fight();
-                  } else {
-                      $timeout.cancel(stop);
-                  }
-                }, 100);
-              };
-
-              $scope.stopFight = function() {
-                $timeout.cancel(stop);
-              };
-
-              $scope.resetFight = function() {
-                $scope.blood_1 = 100;
-                $scope.blood_2 = 120;
-              }
-            }
-
-            angular.module('time', [])
-              // Register the 'myCurrentTime' directive factory method.
-              // We inject $timeout and dateFilter service since the factory method is DI.
-              .directive('myCurrentTime', function($timeout, dateFilter) {
-                // return the directive link function. (compile function not needed)
-                return function(scope, element, attrs) {
-                  var format,  // date format
-                  timeoutId; // timeoutId, so that we can cancel the time updates
-
-                  // used to update the UI
-                  function updateTime() {
-                    element.text(dateFilter(new Date(), format));
-                  }
-
-                  // watch the expression, and update the UI on change.
-                  scope.$watch(attrs.myCurrentTime, function(value) {
-                    format = value;
-                    updateTime();
-                  });
-
-                  // schedule update in one second
-                  function updateLater() {
-                    // save the timeoutId for canceling
-                    timeoutId = $timeout(function() {
-                      updateTime(); // update DOM
-                      updateLater(); // schedule another update
-                    }, 1000);
-                  }
-
-                  // listen on DOM destroy (removal) event, and cancel the next UI update
-                  // to prevent updating time ofter the DOM element was removed.
-                  element.bind('$destroy', function() {
-                    $timeout.cancel(timeoutId);
-                  });
-
-                  updateLater(); // kick off the UI update process.
-                }
-              });
-          </script>
-
-          <div>
-            <div ng-controller="Ctrl2">
-              Date format: <input ng-model="format"> <hr/>
-              Current time is: <span my-current-time="format"></span>
-              <hr/>
-              Blood 1 : <font color='red'>{{blood_1}}</font>
-              Blood 2 : <font color='red'>{{blood_2}}</font>
-              <button type="button" data-ng-click="fight()">Fight</button>
-              <button type="button" data-ng-click="stopFight()">StopFight</button>
-              <button type="button" data-ng-click="resetFight()">resetFight</button>
-            </div>
-          </div>
-
-        </doc:source>
-      </doc:example>
       */
     function timeout(fn, delay, invokeApply) {
       var deferred = $q.defer(),
@@ -25651,15 +25647,17 @@ function textInputType(scope, element, attr, ctrl, $sniffer, $browser) {
   // In composition mode, users are still inputing intermediate text buffer,
   // hold the listener until composition is done.
   // More about composition events: https://developer.mozilla.org/en-US/docs/Web/API/CompositionEvent
-  var composing = false;
+  if (!$sniffer.android) {
+    var composing = false;
 
-  element.on('compositionstart', function() {
-    composing = true;
-  });
+    element.on('compositionstart', function(data) {
+      composing = true;
+    });
 
-  element.on('compositionend', function() {
-    composing = false;
-  });
+    element.on('compositionend', function() {
+      composing = false;
+    });
+  }
 
   var listener = function() {
     if (composing) return;
@@ -28176,7 +28174,7 @@ var ngIncludeFillContentDirective = ['$compile',
  * current scope.
  *
  * <div class="alert alert-error">
- * The only appropriate use of `ngInit` for aliasing special properties of
+ * The only appropriate use of `ngInit` is for aliasing special properties of
  * {@link api/ng.directive:ngRepeat `ngRepeat`}, as seen in the demo below. Besides this case, you
  * should use {@link guide/controller controllers} rather than `ngInit`
  * to initialize values on a scope.
@@ -29733,18 +29731,10 @@ var selectDirective = ['$compile', '$parse', function($compile,   $parse) {
       selectCtrl.init(ngModelCtrl, nullOption, unknownOption);
 
       // required validator
-      if (multiple && (attr.required || attr.ngRequired)) {
-        var requiredValidator = function(value) {
-          ngModelCtrl.$setValidity('required', !attr.required || (value && value.length));
-          return value;
+      if (multiple) {
+        ngModelCtrl.$isEmpty = function(value) {
+          return !value || value.length === 0;
         };
-
-        ngModelCtrl.$parsers.push(requiredValidator);
-        ngModelCtrl.$formatters.unshift(requiredValidator);
-
-        attr.$observe('required', function() {
-          requiredValidator(ngModelCtrl.$viewValue);
-        });
       }
 
       if (optionsExp) setupAsOptions(scope, element, ngModelCtrl);
